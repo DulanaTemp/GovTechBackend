@@ -88,19 +88,26 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
-        OtpVerification verification = otpRepository
-                .findTopByPhoneNumberAndIsVerifiedFalseOrderByCreatedAtDesc(request.phoneNumber())
-                .orElseThrow(() -> new BusinessException("No pending OTP found. Please request a new one."));
+        if (otpProperties.bypassValidation()) {
+            // DEV/DEMO ONLY: accept any correctly-formatted OTP without checking it.
+            log.warn("OTP validation is BYPASSED (app.otp.bypass-validation=true). "
+                    + "Do not use this setting in production.");
+            markLatestOtpVerified(request.phoneNumber());
+        } else {
+            OtpVerification verification = otpRepository
+                    .findTopByPhoneNumberAndIsVerifiedFalseOrderByCreatedAtDesc(request.phoneNumber())
+                    .orElseThrow(() -> new BusinessException("No pending OTP found. Please request a new one."));
 
-        if (verification.getExpiresAt().isBefore(OffsetDateTime.now())) {
-            throw new BusinessException("OTP has expired. Please request a new one.");
-        }
-        if (!passwordEncoder.matches(request.otp(), verification.getOtpHash())) {
-            throw new BusinessException("Invalid OTP.");
-        }
+            if (verification.getExpiresAt().isBefore(OffsetDateTime.now())) {
+                throw new BusinessException("OTP has expired. Please request a new one.");
+            }
+            if (!passwordEncoder.matches(request.otp(), verification.getOtpHash())) {
+                throw new BusinessException("Invalid OTP.");
+            }
 
-        verification.setIsVerified(true);
-        otpRepository.save(verification);
+            verification.setIsVerified(true);
+            otpRepository.save(verification);
+        }
 
         User user = userRepository.findByPhoneNumber(request.phoneNumber())
                 .orElseGet(() -> userRepository.save(User.builder()
@@ -116,6 +123,18 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getId(), user.getPhoneNumber());
         return new AuthResponse(token, "Bearer", jwtService.getExpirationMinutes(), UserResponse.from(user));
+    }
+
+    /**
+     * Best-effort: mark the latest pending OTP for this number as verified if one
+     * exists. Used only in bypass mode, where a prior OTP request is not required.
+     */
+    private void markLatestOtpVerified(String phoneNumber) {
+        otpRepository.findTopByPhoneNumberAndIsVerifiedFalseOrderByCreatedAtDesc(phoneNumber)
+                .ifPresent(verification -> {
+                    verification.setIsVerified(true);
+                    otpRepository.save(verification);
+                });
     }
 
     private String generateOtp() {

@@ -9,6 +9,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record OtpProperties(
         int length,
         long expiryMinutes,
-        boolean logForDevelopment
+        boolean logForDevelopment,
+        /**
+         * When true, OTP verification accepts any correctly-formatted code without
+         * checking it against a generated OTP. DEV/DEMO ONLY. Must be false in production.
+         */
+        boolean bypassValidation
 ) {
 }

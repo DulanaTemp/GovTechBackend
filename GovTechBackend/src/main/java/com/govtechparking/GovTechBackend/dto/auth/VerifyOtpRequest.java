@@ -9,7 +9,7 @@ public record VerifyOtpRequest(
         String phoneNumber,
 
         @NotBlank
-        @Pattern(regexp = "^[0-9]{4,8}$", message = "otp must be numeric")
+        @Pattern(regexp = "^[0-9]{6}$", message = "otp must be exactly 6 digits")
         String otp,
 
         String name
