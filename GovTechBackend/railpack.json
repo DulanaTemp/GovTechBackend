@@ -1,0 +1,13 @@
+{
+  "provider": "java",
+  "steps": {
+    "build": {
+      "commands": [
+        "./gradlew clean bootJar -x test --no-daemon"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "java -Dserver.port=$PORT -jar build/libs/GovTechBackend-0.0.1-SNAPSHOT.jar"
+  }
+}
