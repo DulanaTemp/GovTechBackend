@@ -3,7 +3,8 @@
   "steps": {
     "build": {
       "commands": [
-        "./gradlew clean bootJar -x test --no-daemon"
+        "chmod +x gradlew",
+        "sh gradlew clean bootJar -x test --no-daemon"
       ]
     }
   },
